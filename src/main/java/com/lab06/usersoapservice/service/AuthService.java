@@ -18,38 +18,43 @@ public class AuthService {
     }
 
     public String registerUser(String username, String password) {
-        if (username == null || username.isBlank() || password == null || password.isBlank()) {
-            return "Хэрэглэгчийн нэр болон нууц үгээ оруулна уу.";
+        String normalizedUsername = normalizeUsername(username);
+
+        if (normalizedUsername == null || password == null || password.isBlank()) {
+            return "Hereglegchiin ner bolon nuuts ugee oruulna uu.";
         }
 
-        if (userRepository.findByUsername(username).isPresent()) {
-            return "Энэ хэрэглэгчийн нэр аль хэдийн бүртгэлтэй байна.";
+        if (userRepository.findByUsername(normalizedUsername).isPresent()) {
+            return "Ene hereglegchiin ner ali hediin burtgeltei baina.";
         }
 
         User user = new User();
-        user.setUsername(username.trim());
+        user.setUsername(normalizedUsername);
         user.setPassword(password);
         userRepository.save(user);
-        return "Хэрэглэгч амжилттай бүртгэгдлээ.";
+        return "Hereglegch amjilttai burtgegdlee.";
     }
 
     public LoginResult loginUser(String username, String password) {
-        Optional<User> foundUser = userRepository.findByUsername(username);
+        String normalizedUsername = normalizeUsername(username);
+        Optional<User> foundUser = normalizedUsername == null
+                ? Optional.empty()
+                : userRepository.findByUsername(normalizedUsername);
 
         if (foundUser.isEmpty()) {
-            return new LoginResult(false, null, null, "Хэрэглэгчийн нэр олдсонгүй.");
+            return new LoginResult(false, null, null, "Hereglegchiin ner oldsongui.");
         }
 
         User user = foundUser.get();
         if (!user.getPassword().equals(password)) {
-            return new LoginResult(false, null, null, "Нууц үг буруу байна.");
+            return new LoginResult(false, null, null, "Nuuts ug buruu baina.");
         }
 
         String token = UUID.randomUUID().toString();
         user.setToken(token);
         userRepository.save(user);
 
-        return new LoginResult(true, token, user.getId(), "Амжилттай нэвтэрлээ.");
+        return new LoginResult(true, token, user.getId(), "Amjilttai nevterlee.");
     }
 
     public boolean validateToken(String token) {
@@ -62,5 +67,14 @@ public class AuthService {
     public Long getUserIdByToken(String token) {
         Optional<User> foundUser = userRepository.findByToken(token);
         return foundUser.map(User::getId).orElse(null);
+    }
+
+    private String normalizeUsername(String username) {
+        if (username == null) {
+            return null;
+        }
+
+        String normalized = username.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }
